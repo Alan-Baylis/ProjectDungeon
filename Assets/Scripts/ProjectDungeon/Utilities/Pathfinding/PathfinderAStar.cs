@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Utilities.PriorityQueue;
+using Priority_Queue;
 
 namespace Utilities.Pathfinding
 {
