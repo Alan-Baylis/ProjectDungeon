@@ -28,3 +28,6 @@ sysinfo.txt
 # Builds
 *.apk
 *.unitypackage
+Assets/Scripts/Utilities/PriorityQueue/*
+Assets/Scripts/Utilities/PriorityQueue.meta
+Assets/Scripts/Utilities/ProceduralMesh*
