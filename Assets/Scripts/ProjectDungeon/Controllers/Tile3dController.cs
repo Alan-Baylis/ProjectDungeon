@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 
+[ExecuteInEditMode]
 public class Tile3dController : MonoBehaviour
 {
   public GameObject cellPrefab;
@@ -33,6 +34,11 @@ public class Tile3dController : MonoBehaviour
 
   private void BuildMap()
   {
+    foreach (Transform child in transform)
+    {
+      GameObject.DestroyImmediate(child.gameObject);
+    }
+
     if (tileGameObjectMap != null && tileGameObjectMap.Count > 0)
     {
       foreach (var k in tileGameObjectMap.Keys)
@@ -63,14 +69,16 @@ public class Tile3dController : MonoBehaviour
 
           GameObject tileGameObject = new GameObject();
           tileGameObject.name = "Map Tile " + x + ", " + y;
-          GameObject floorGameObject = Instantiate(cellPrefab);
-          floorGameObject.name = "Map Tile " + x + ", " + y + "_FLOOR";
-          floorGameObject.transform.parent = tileGameObject.transform;
-          floorGameObject.transform.localPosition = new Vector3(x - GameWorld.ActualWidth * 0.5f + 0.5f, 0f, y - GameWorld.ActualHeight * 0.5f + 0.5f);
-
-          floorGameObject.GetComponentInChildren<MeshRenderer>().material = tileSet.FloorMaterial;
-
-          if (tile.Type == TileType.WALL)
+        
+          if (tile.Type == TileType.FLOOR)
+          {
+            GameObject floorGameObject = Instantiate(cellPrefab);
+            floorGameObject.name = "Map Tile " + x + ", " + y + "_FLOOR";
+            floorGameObject.transform.parent = tileGameObject.transform;
+            floorGameObject.transform.localPosition = new Vector3(x - GameWorld.ActualWidth * 0.5f + 0.5f, 0f, y - GameWorld.ActualHeight * 0.5f + 0.5f);
+            floorGameObject.GetComponentInChildren<MeshRenderer>().material = tileSet.FloorMaterial;
+          }
+          else if (tile.Type == TileType.WALL)
           {
             if (tile.Facing == TileFacing.NORTH || tile.Facing == TileFacing.EAST || tile.Facing == TileFacing.SOUTH || tile.Facing == TileFacing.WEST)
             {

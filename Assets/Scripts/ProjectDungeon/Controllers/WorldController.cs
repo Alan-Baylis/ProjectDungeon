@@ -10,6 +10,7 @@ public interface IWorldController
   Map GameWorld { get; }
 }
 
+[ExecuteInEditMode]
 public abstract class BaseWorldController : MonoBehaviour, IWorldController
 {
   public static IWorldController Instance { get; protected set; }
@@ -26,10 +27,13 @@ public class WorldController : BaseWorldController
   void Awake()
   {
     if (Instance != null)
+    {
+      Instance = null;
       Debug.Log("SHIT, two world controllers exist.");
+    }
     Instance = this;
 
-    GameWorld = new Map(new MapSettings(32, 32, 3)
+    GameWorld = new Map(new MapSettings(16, 16, 3)
     {
       MapPoints = new List<MapPoint>()
       {
