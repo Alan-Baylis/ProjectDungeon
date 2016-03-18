@@ -57,12 +57,10 @@ public class CameraController : MonoBehaviour
   void HandleKeyboardRotate(float deltaTime)
   {
     if (Input.GetKeyDown(KeyCode.Q))
-      targetRotation -= 90;
-
-    if (Input.GetKeyDown(KeyCode.E))
       targetRotation += 90;
 
-
+    if (Input.GetKeyDown(KeyCode.E))
+      targetRotation -= 90;
 
     Quaternion target = Quaternion.Euler(0, targetRotation, 0);
     CameraTarget.transform.localRotation = Quaternion.Slerp(CameraTarget.transform.localRotation, target, 0.03f);
