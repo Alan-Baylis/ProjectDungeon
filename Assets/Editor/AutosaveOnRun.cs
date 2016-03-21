@@ -11,12 +11,9 @@ public class AutosaveOnRun : ScriptableObject
     {
       if (EditorApplication.isPlayingOrWillChangePlaymode && !EditorApplication.isPlaying)
       {
-        //Debug.Log("Saving scene.");
-        //EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene());
-        //EditorApplication.SaveAssets();
-
-
-        //EditorSceneManager.LoadScene()
+        Debug.Log("Saving scene.");
+        EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene());
+        EditorApplication.SaveAssets();
       }
     };
   }

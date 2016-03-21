@@ -16,14 +16,51 @@ public class Tile3dController : MonoBehaviour
   public List<TileSet> TileSets;
 
   private Dictionary<Tile, GameObject> tileGameObjectMap;
-  private Map GameWorld { get { return WorldController.Instance.GameWorld; } }
+  private Map _debugMap;
+  private Map GameWorld
+  {
+    get
+    {
+      if (Application.isPlaying)
+      {
+        return WorldController.Instance.GameWorld;
+      }
+      else
+      {
+        if (_debugMap == null)
+        {
+          _debugMap = new Map(new MapSettings(16, 16, 3)
+          {
+            MapPoints = new List<MapPoint>()
+            {
+              new MapPoint { X = .2f, Y=.2f },
+              new MapPoint { X = .8f, Y=.2f },
+              new MapPoint { X = .8f, Y=.8f },
+              new MapPoint { X = .2f, Y=.8f },
+            },
+            DoorPercentages = new List<int> { 50, 30, 20, 10 }
+          });
+          _debugMap.Generate();
+        }
+        return _debugMap;
+      }
+      
+    }
+  }
   // Use this for initialization
   void Start()
   {
-    WorldController.Instance.MapUpdated += OnMapGenerated;
     var total = wallPrefabs.Sum(x => x.Weight);
     wallPrefabs.ForEach(x => x.Percentage = Mathf.CeilToInt(((float)x.Weight / (float)total) * 100));
     wallPrefabs = wallPrefabs.OrderBy(x => x.Percentage).ToList();
+
+    if (Application.isEditor)
+    {
+      BuildMap();
+      return;
+    }
+    WorldController.Instance.MapUpdated += OnMapGenerated;
+
   }
 
   // Update is called once per frame
@@ -69,7 +106,7 @@ public class Tile3dController : MonoBehaviour
 
           GameObject tileGameObject = new GameObject();
           tileGameObject.name = "Map Tile " + x + ", " + y;
-        
+
           if (tile.Type == TileType.FLOOR)
           {
             GameObject floorGameObject = Instantiate(cellPrefab);
