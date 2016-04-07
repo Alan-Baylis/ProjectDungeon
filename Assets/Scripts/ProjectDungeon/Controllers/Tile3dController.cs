@@ -5,8 +5,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 
-[ExecuteInEditMode]
-public class Tile3dController : MonoBehaviour
+public class Tile3DController : MonoBehaviour
 {
   public GameObject cellPrefab;
   public List<WeightedPrefab> wallPrefabs;
@@ -15,7 +14,7 @@ public class Tile3dController : MonoBehaviour
 
   public List<TileSet> TileSets;
 
-  private Dictionary<Tile, GameObject> tileGameObjectMap;
+  private Dictionary<Tile, GameObject> _tileGameObjectMap;
   private Map _debugMap;
   private Map GameWorld
   {
@@ -23,32 +22,30 @@ public class Tile3dController : MonoBehaviour
     {
       if (Application.isPlaying)
       {
-        return WorldController.Instance.GameWorld;
+        return BaseWorldController.Instance.GameWorld;
       }
-      else
-      {
-        if (_debugMap == null)
-        {
-          _debugMap = new Map(new MapSettings(16, 16, 3)
-          {
-            MapPoints = new List<MapPoint>()
-            {
-              new MapPoint { X = .2f, Y=.2f },
-              new MapPoint { X = .8f, Y=.2f },
-              new MapPoint { X = .8f, Y=.8f },
-              new MapPoint { X = .2f, Y=.8f },
-            },
-            DoorPercentages = new List<int> { 50, 30, 20, 10 }
-          });
-          _debugMap.Generate();
-        }
+
+      if (_debugMap != null)
         return _debugMap;
-      }
-      
+
+      _debugMap = new Map(new MapSettings(16, 16, 3)
+      {
+        MapPoints = new List<MapPoint>()
+        {
+          new MapPoint { X = .2f, Y=.2f },
+          new MapPoint { X = .8f, Y=.2f },
+          new MapPoint { X = .8f, Y=.8f },
+          new MapPoint { X = .2f, Y=.8f },
+        },
+        DoorPercentages = new List<int> { 50, 30, 20, 10 }
+      });
+      _debugMap.Generate();
+      return _debugMap;
     }
   }
   // Use this for initialization
-  void Start()
+  // ReSharper disable once UnusedMember.Local
+  private void Start()
   {
     var total = wallPrefabs.Sum(x => x.Weight);
     wallPrefabs.ForEach(x => x.Percentage = Mathf.CeilToInt(((float)x.Weight / (float)total) * 100));
@@ -59,12 +56,12 @@ public class Tile3dController : MonoBehaviour
       BuildMap();
       return;
     }
-    WorldController.Instance.MapUpdated += OnMapGenerated;
-
+    BaseWorldController.Instance.MapUpdated += OnMapGenerated;
   }
 
   // Update is called once per frame
-  void Update() { }
+  // ReSharper disable once UnusedMember.Local
+  private void Update() { }
 
   private void OnMapGenerated(object sender, EventArgs e) { BuildMap(); }
   private void OnMapTileChanged(object sender, EventArgs e) { }
@@ -73,27 +70,26 @@ public class Tile3dController : MonoBehaviour
   {
     foreach (Transform child in transform)
     {
-      GameObject.DestroyImmediate(child.gameObject);
+      DestroyImmediate(child.gameObject);
     }
 
-    if (tileGameObjectMap != null && tileGameObjectMap.Count > 0)
+    if (_tileGameObjectMap != null && _tileGameObjectMap.Count > 0)
     {
-      foreach (var k in tileGameObjectMap.Keys)
+      foreach (var k in _tileGameObjectMap.Keys.Where(k => k != null))
       {
         k.TileChanged -= OnMapTileChanged;
-        Destroy(tileGameObjectMap[k]);
+        Destroy(_tileGameObjectMap[k]);
       }
-      tileGameObjectMap.Clear();
+      _tileGameObjectMap.Clear();
     }
     var unitsize = GameWorld.Settings.UnitSize;
-    tileGameObjectMap = new Dictionary<Tile, GameObject>();
+    _tileGameObjectMap = new Dictionary<Tile, GameObject>();
 
-    foreach (Room r in GameWorld.Rooms)
+    foreach (var r in GameWorld.Rooms)
     {
       var tileSet = TileSets[UnityEngine.Random.Range(0, TileSets.Count)];
 
-      GameObject roomObject = new GameObject();
-      roomObject.name = "Room: " + r.Id;
+      var roomObject = new GameObject { name = "Room: " + r.Id };
       roomObject.transform.parent = transform;
 
       for (var x = r.X * unitsize; x < r.MaxX * unitsize; ++x)
@@ -104,57 +100,83 @@ public class Tile3dController : MonoBehaviour
           if (tile == null)
             continue;
 
-          GameObject tileGameObject = new GameObject();
-          tileGameObject.name = "Map Tile " + x + ", " + y;
+          var tileGameObject = new GameObject { name = "Map Tile " + x + ", " + y };
 
           if (tile.Type == TileType.FLOOR)
           {
-            GameObject floorGameObject = Instantiate(cellPrefab);
+            var floorGameObject = Instantiate(cellPrefab);
             floorGameObject.name = "Map Tile " + x + ", " + y + "_FLOOR";
             floorGameObject.transform.parent = tileGameObject.transform;
             floorGameObject.transform.localPosition = new Vector3(x - GameWorld.ActualWidth * 0.5f + 0.5f, 0f, y - GameWorld.ActualHeight * 0.5f + 0.5f);
             floorGameObject.GetComponentInChildren<MeshRenderer>().material = tileSet.FloorMaterial;
           }
-          else if (tile.Type == TileType.WALL)
+          if (tile.Edges != null)
           {
-            if (tile.Facing == TileFacing.NORTH || tile.Facing == TileFacing.EAST || tile.Facing == TileFacing.SOUTH || tile.Facing == TileFacing.WEST)
+            foreach (var edge in tile.Edges)
             {
-              GameObject wallGameObject = Instantiate(GetWallPrefab());
-              wallGameObject.name = "Map Wall " + x + ", " + y;
-              wallGameObject.transform.parent = tileGameObject.transform;
-              wallGameObject.transform.localPosition = new Vector3(x - GameWorld.ActualWidth * 0.5f + 0.5f, 0f, y - GameWorld.ActualHeight * 0.5f + 0.5f);
-              wallGameObject.transform.localRotation = ToRotation(tile.Facing);
-              var temp = wallGameObject.GetComponentsInChildren<MeshRenderer>();
-              foreach (var mr in temp)
+              switch (edge.EdgeType)
               {
-                mr.material = tileSet.WallMaterial;
+                case TileEdgeType.WALL:
+                  var wallGameObject = Instantiate(GetWallPrefab());
+                  wallGameObject.name = "Map Wall " + x + ", " + y + edge.Facing;
+                  wallGameObject.transform.parent = tileGameObject.transform;
+                  wallGameObject.transform.localPosition = new Vector3(x - GameWorld.ActualWidth * 0.5f + 0.5f, 0f,
+                    y - GameWorld.ActualHeight * 0.5f + 0.5f);
+                  wallGameObject.transform.localRotation = ToRotation(edge.Facing);
+                  var temp = wallGameObject.GetComponentsInChildren<MeshRenderer>();
+                  foreach (var mr in temp)
+                  {
+                    mr.material = tileSet.WallMaterial;
+                  }
+                  break;
+                case TileEdgeType.DOOR:
+                  break;
+                default:
+                  throw new ArgumentOutOfRangeException();
               }
             }
-            else
-            {
-              GameObject wallGameObject = Instantiate(wallCornerPrefab);
-              wallGameObject.name = "Map Wall Corner" + x + ", " + y;
-              wallGameObject.transform.parent = tileGameObject.transform;
-              wallGameObject.transform.localPosition = new Vector3(x - GameWorld.ActualWidth * 0.5f + 0.5f, 0f, y - GameWorld.ActualHeight * 0.5f + 0.5f);
-              wallGameObject.transform.localRotation = ToRotation(tile.Facing);
-              var temp = wallGameObject.GetComponentsInChildren<MeshRenderer>();
-              foreach (var mr in temp)
-              {
-                mr.material = tileSet.WallMaterial;
-              }
-            }
-          }
-          else if (tile.Type == TileType.DOOR)
-          {
-            GameObject doorGameObject = Instantiate(doorPrefab);
-            doorGameObject.name = "Map Door " + x + ", " + y;
-            doorGameObject.transform.parent = tileGameObject.transform;
-            doorGameObject.transform.localPosition = new Vector3(x - GameWorld.ActualWidth * 0.5f + 0.5f, 0f, y - GameWorld.ActualHeight * 0.5f + 0.5f);
-            doorGameObject.transform.localRotation = ToRotation(tile.Facing);
           }
 
+          //else if (tile.Type == TileType.WALL)
+          //{
+          //  if (tile.Facing == Facing.NORTH || tile.Facing == Facing.EAST || tile.Facing == Facing.SOUTH || tile.Facing == Facing.WEST)
+          //  {
+          //    var wallGameObject = Instantiate(GetWallPrefab());
+          //    wallGameObject.name = "Map Wall " + x + ", " + y;
+          //    wallGameObject.transform.parent = tileGameObject.transform;
+          //    wallGameObject.transform.localPosition = new Vector3(x - GameWorld.ActualWidth * 0.5f + 0.5f, 0f, y - GameWorld.ActualHeight * 0.5f + 0.5f);
+          //    wallGameObject.transform.localRotation = ToRotation(tile.Facing);
+          //    var temp = wallGameObject.GetComponentsInChildren<MeshRenderer>();
+          //    foreach (var mr in temp)
+          //    {
+          //      mr.material = tileSet.WallMaterial;
+          //    }
+          //  }
+          //  else
+          //  {
+          //    var wallGameObject = Instantiate(wallCornerPrefab);
+          //    wallGameObject.name = "Map Wall Corner" + x + ", " + y;
+          //    wallGameObject.transform.parent = tileGameObject.transform;
+          //    wallGameObject.transform.localPosition = new Vector3(x - GameWorld.ActualWidth * 0.5f + 0.5f, 0f, y - GameWorld.ActualHeight * 0.5f + 0.5f);
+          //    wallGameObject.transform.localRotation = ToRotation(tile.Facing);
+          //    var temp = wallGameObject.GetComponentsInChildren<MeshRenderer>();
+          //    foreach (var mr in temp)
+          //    {
+          //      mr.material = tileSet.WallMaterial;
+          //    }
+          //  }
+          //}
+          //else if (tile.Type == TileType.DOOR)
+          //{
+          //  var doorGameObject = Instantiate(doorPrefab);
+          //  doorGameObject.name = "Map Door " + x + ", " + y;
+          //  doorGameObject.transform.parent = tileGameObject.transform;
+          //  doorGameObject.transform.localPosition = new Vector3(x - GameWorld.ActualWidth * 0.5f + 0.5f, 0f, y - GameWorld.ActualHeight * 0.5f + 0.5f);
+          //  doorGameObject.transform.localRotation = ToRotation(tile.Facing);
+          //}
+
           tileGameObject.transform.parent = roomObject.transform;
-          tileGameObjectMap.Add(tile, tileGameObject);
+          _tileGameObjectMap.Add(tile, tileGameObject);
         }
       }
     }
@@ -174,47 +196,40 @@ public class Tile3dController : MonoBehaviour
     return wallPrefabs[wallPrefabs.Count - 1].Prefab;
   }
 
-  private Mesh GenerateTerrain(int xSize, int ySize)
+  //private Mesh GenerateTerrain(int xSize, int ySize)
+  //{
+  //  var mesh = new Mesh {name = "Procedural Grid"};
+  //  var vertices = new Vector3[(xSize + 1) * (ySize + 1)];
+  //  for (int i = 0, y = 0; y <= ySize; y++)
+  //  {
+  //    for (int x = 0; x <= xSize; x++, i++)
+  //    {
+  //      vertices[i] = new Vector3(x, y);
+  //    }
+  //  }
+  //  mesh.vertices = vertices;
+
+  //  int[] triangles = new int[xSize * ySize * 6];
+  //  for (int ti = 0, vi = 0, y = 0; y < ySize; y++, vi++)
+  //  {
+  //    for (int x = 0; x < xSize; x++, ti += 6, vi++)
+  //    {
+  //      triangles[ti] = vi;
+  //      triangles[ti + 3] = triangles[ti + 2] = vi + 1;
+  //      triangles[ti + 4] = triangles[ti + 1] = vi + xSize + 1;
+  //      triangles[ti + 5] = vi + xSize + 2;
+  //    }
+  //  }
+  //  mesh.triangles = triangles;
+  //  return mesh;
+  //}
+
+  private static readonly Quaternion[] rotations =
   {
-    Mesh mesh = new Mesh();
-    mesh.name = "Procedural Grid";
-    var vertices = new Vector3[(xSize + 1) * (ySize + 1)];
-    for (int i = 0, y = 0; y <= ySize; y++)
-    {
-      for (int x = 0; x <= xSize; x++, i++)
-      {
-        vertices[i] = new Vector3(x, y);
-      }
-    }
-    mesh.vertices = vertices;
-
-    int[] triangles = new int[xSize * ySize * 6];
-    for (int ti = 0, vi = 0, y = 0; y < ySize; y++, vi++)
-    {
-      for (int x = 0; x < xSize; x++, ti += 6, vi++)
-      {
-        triangles[ti] = vi;
-        triangles[ti + 3] = triangles[ti + 2] = vi + 1;
-        triangles[ti + 4] = triangles[ti + 1] = vi + xSize + 1;
-        triangles[ti + 5] = vi + xSize + 2;
-      }
-    }
-    mesh.triangles = triangles;
-    return mesh;
-  }
-
-  private static Quaternion[] rotations = {
-    Quaternion.identity,
-    Quaternion.identity,
-    Quaternion.Euler(0f, 90f, 0f),
-    Quaternion.Euler(0f, 90f, 0f),
-    Quaternion.Euler(0f, 180f, 0f),
-    Quaternion.Euler(0f, 180f, 0f),
-    Quaternion.Euler(0f, 270f, 0f),
-    Quaternion.Euler(0f, 270f, 0f)
+    Quaternion.identity, Quaternion.identity, Quaternion.Euler(0f, 90f, 0f), Quaternion.Euler(0f, 90f, 0f), Quaternion.Euler(0f, 180f, 0f), Quaternion.Euler(0f, 180f, 0f), Quaternion.Euler(0f, 270f, 0f), Quaternion.Euler(0f, 270f, 0f)
   };
 
-  public static Quaternion ToRotation(TileFacing facing)
+  public static Quaternion ToRotation(Facing facing)
   {
     return rotations[(int)facing];
   }

@@ -2,23 +2,6 @@
 using Utilities.Pathfinding;
 namespace Models
 {
-  public enum TileType : int
-  {
-    FLOOR, WALL, DOOR, DEBUG
-  }
-
-  public enum TileFacing
-  {
-    NORTH,
-    NORTHEAST,
-    EAST,
-    SOUTHEAST,
-    SOUTH,
-    SOUTHWEST,
-    WEST,
-    NORTHWEST
-  }
-
   public class Tile : IPathObject
   {
     public EventHandler TileChanged;
@@ -29,7 +12,9 @@ namespace Models
 
     public TileType Type { get; set; }
 
-    public TileFacing Facing { get; set; }
+    public Facing Facing { get; set; }
+
+    public TileEdge[] Edges { get; set; }
 
     // Tiles are always the same size, so we can leave this as 1;
     public int Width { get { return 1; } }

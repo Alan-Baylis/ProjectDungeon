@@ -435,6 +435,7 @@ namespace Models.Maps
       var unitSize = Settings.UnitSize;
 
       tileMap = new Tile[width * unitSize, height * unitSize];
+      // First pass create the basic rooms
       foreach (var room in Rooms)
       {
         //TODO: use prefabs for this.
@@ -453,98 +454,92 @@ namespace Models.Maps
 
             tile = new Tile();
             tile.TileChanged += MapTileChanged;
-            // Tiles on the edge of the room become walls, the rest become floors
+
+            // TODO: Since moving the walls and doors to edges, there is no other tile type yet
+            // TODO: When we add other types such as Empty or Water or Lava etc we'll need to add them here.
+            tile.Type = TileType.FLOOR;
+
+            // The Tiles on the edge are still going to be floors, but they need to have walls added to their edges.
             if (x == 0 || y == 0 || x == roomW - 1 || y == roomH - 1)
             {
-              tile.Type = TileType.WALL;
               if (x == 0)
               {
                 if (y == 0)
                 {
-                  tile.Facing = TileFacing.SOUTHWEST;
+                  tile.Edges = new[] { new TileEdge(Facing.WEST), new TileEdge(Facing.SOUTH) };
                 }
                 else if (y == roomH - 1)
                 {
-                  tile.Facing = TileFacing.NORTHWEST;
+                  tile.Edges = new[] { new TileEdge(Facing.WEST), new TileEdge(Facing.NORTH) };
                 }
                 else
                 {
-                  tile.Facing = TileFacing.WEST;
+                  tile.Edges = new[]{new TileEdge(Facing.WEST)};
                 }
-
               }
               else if (x == roomW - 1)
               {
                 if (y == 0)
                 {
-                  tile.Facing = TileFacing.SOUTHEAST;
+                  tile.Edges = new[]{new TileEdge(Facing.EAST),new TileEdge(Facing.SOUTH)};
                 }
                 else if (y == roomH - 1)
                 {
-                  tile.Facing = TileFacing.NORTHEAST;
+                  tile.Edges = new[]{new TileEdge(Facing.EAST),new TileEdge(Facing.NORTH)};
                 }
                 else
                 {
-                  tile.Facing = TileFacing.EAST;
+                  tile.Edges = new[]{new TileEdge(Facing.EAST)};
                 }
               }
               else if (y == 0)
               {
-                tile.Facing = TileFacing.SOUTH;
+                tile.Edges = new[] { new TileEdge(Facing.SOUTH) };
               }
               else if (y == roomH - 1)
               {
-                tile.Facing = TileFacing.NORTH;
+                tile.Edges = new[] { new TileEdge(Facing.NORTH) };
               }
             }
-            else
-            {
-              tile.Type = TileType.FLOOR;
-            }
-            tileMap[x + (room.X * unitSize), y + (room.Y * unitSize)] = tile;
+            tileMap[x + room.X * unitSize, y + room.Y * unitSize] = tile;
           }
-        }
-
-        // iterate through all of the doors in this room and place them down in the correct location.
-        foreach (Door d in room.Doors)
-        {
-          int doorX, doorY;
-          if (d.Width == 0)
-          {
-            // This offset centers the door along the shared edge.
-            int yOffset = ((d.Height * unitSize) - 1) / 2;
-            //dealing with a door going left/right
-            doorX = (room.X + d.X) * unitSize;
-            doorY = ((room.Y + d.Y) * unitSize) + yOffset;
-          }
-          else
-          {
-            // This offset centers the door along the shared edge.
-            int xOffset = ((d.Width * unitSize) - 1) / 2;
-            // Dealing with a door going up/down
-            doorX = (room.X + d.X) * unitSize + xOffset;
-            doorY = (room.Y + d.Y) * unitSize;
-          }
-
-          // Due to how the doors are stored, in relation to the room, 
-          // doors on the top and right edges of a room actually end up in the next room over
-          // We need to catch this here and move the door back into its own room.
-          if (doorX == (room.X + room.Width) * unitSize)
-            doorX--;
-
-          if (doorY == (room.Y + room.Height) * unitSize)
-            doorY--;
-
-
-          var tile = tileMap[doorX, doorY];
-          if (tile == null)
-          {
-            Debug.LogErrorFormat("Failed to find tile_{0}_{1}", doorX, doorY);
-            continue;
-          }
-          tile.Type = TileType.DOOR;
         }
       }
+      //// iterate through all of the doors in this room and place them down in the correct location.
+      //foreach (Door d in room.Doors)
+      //{
+      //  int doorX, doorY;
+      //  if (d.Width == 0)
+      //  {
+      //    // This offset centers the door along the shared edge.
+      //    int yOffset = ((d.Height * unitSize) - 1) / 2;
+      //    //dealing with a door going left/right
+      //    doorX = (room.X + d.X) * unitSize;
+      //    doorY = ((room.Y + d.Y) * unitSize) + yOffset;
+      //  }
+      //  else
+      //  {
+      //    // This offset centers the door along the shared edge.
+      //    int xOffset = ((d.Width * unitSize) - 1) / 2;
+      //    // Dealing with a door going up/down
+      //    doorX = (room.X + d.X) * unitSize + xOffset;
+      //    doorY = (room.Y + d.Y) * unitSize;
+      //  }
+      //  // Due to how the doors are stored, in relation to the room, 
+      //  // doors on the top and right edges of a room actually end up in the next room over
+      //  // We need to catch this here and move the door back into its own room.
+      //  if (doorX == (room.X + room.Width) * unitSize)
+      //    doorX--;
+      //  if (doorY == (room.Y + room.Height) * unitSize)
+      //    doorY--;
+      //  var tile = tileMap[doorX, doorY];
+      //  if (tile == null)
+      //  {
+      //    Debug.LogErrorFormat("Failed to find tile_{0}_{1}", doorX, doorY);
+      //    continue;
+      //  }
+      //  tile.Type = TileType.DOOR;
+      //}
       return true;
     }
   }
